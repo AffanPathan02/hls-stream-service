@@ -50,8 +50,7 @@ export async function transcode(
           const result: TranscodeResult = JSON.parse(stdout);
           resolve(result);
         } catch (error: unknown) {
-          const msg =
-            error instanceof Error ? error.message : String(error);
+          const msg = error instanceof Error ? error.message : String(error);
           reject(
             new Error(
               `Failed to parse rust stdout as JSON: ${msg} \n Output: ${stdout}`,

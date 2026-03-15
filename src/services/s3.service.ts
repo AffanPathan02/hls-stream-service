@@ -22,9 +22,7 @@ const s3Client = new S3Client({
 if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
   // We'll keep console.warn here as it's a startup/env check, or we could use a global logger if available.
   // For now, just removing the emoji.
-  console.warn(
-    "\nWARNING: AWS credentials not set in environment variables!",
-  );
+  console.warn("\nWARNING: AWS credentials not set in environment variables!");
   console.warn(
     "Please create a .env file with AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY\n",
   );
@@ -129,7 +127,9 @@ export async function uploadHLSToS3(
   const start = performance.now();
 
   const tasks = filesToUpload.map(
-    ({ localPath, s3Key }) => () => uploadFileToS3(localPath, s3Key, logger),
+    ({ localPath, s3Key }) =>
+      () =>
+        uploadFileToS3(localPath, s3Key, logger),
   );
   await runWithConcurrency(tasks, S3_CONCURRENCY);
 

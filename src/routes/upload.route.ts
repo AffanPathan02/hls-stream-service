@@ -51,8 +51,7 @@ export async function uploadRoutes(fastify: FastifyInstance) {
       const songName =
         (fields.song_name && "value" in fields.song_name
           ? (fields.song_name.value as string)
-          : null) ||
-        data.filename.replace(/\.[^.]+$/, "");
+          : null) || data.filename.replace(/\.[^.]+$/, "");
       const artistName =
         (fields.artist_name && "value" in fields.artist_name
           ? (fields.artist_name.value as string)
@@ -62,18 +61,28 @@ export async function uploadRoutes(fastify: FastifyInstance) {
           ? (fields.album_name.value as string)
           : null;
 
-      request.log.info({
-        trackId,
-        originalFile: data.filename,
-        sizeMB: (fileStats.size / (1024 * 1024)).toFixed(2),
-      }, "NEW UPLOAD REQUEST");
+      request.log.info(
+        {
+          trackId,
+          originalFile: data.filename,
+          sizeMB: (fileStats.size / (1024 * 1024)).toFixed(2),
+        },
+        "NEW UPLOAD REQUEST",
+      );
 
       // STEP 1: Transcode
       request.log.info("STEP 1: Transcoding...");
       const transcodeStart = performance.now();
-      const transcodeResult: TranscodeResult = await transcode(tempFilePath, trackId, request.log);
+      const transcodeResult: TranscodeResult = await transcode(
+        tempFilePath,
+        trackId,
+        request.log,
+      );
       const transcodeMs = performance.now() - transcodeStart;
-      request.log.info({ transcodeTimeSeconds: (transcodeMs / 1000).toFixed(2) }, "Transcoding complete");
+      request.log.info(
+        { transcodeTimeSeconds: (transcodeMs / 1000).toFixed(2) },
+        "Transcoding complete",
+      );
 
       const totalSegments = transcodeResult.bitrates.reduce(
         (sum, br) => sum + br.segments,
@@ -83,22 +92,33 @@ export async function uploadRoutes(fastify: FastifyInstance) {
       // STEP 2: Upload to S3
       request.log.info("STEP 2: Uploading to S3...");
       const s3Start = performance.now();
-      const masterPlaylistUrl = await uploadHLSToS3(trackId, localOutputDir, request.log);
+      const masterPlaylistUrl = await uploadHLSToS3(
+        trackId,
+        localOutputDir,
+        request.log,
+      );
       const s3Ms = performance.now() - s3Start;
-      request.log.info({ s3UploadTimeSeconds: (s3Ms / 1000).toFixed(2), masterPlaylistUrl }, "S3 upload complete");
+      request.log.info(
+        { s3UploadTimeSeconds: (s3Ms / 1000).toFixed(2), masterPlaylistUrl },
+        "S3 upload complete",
+      );
 
       // STEP 3: Store in database
       request.log.info("STEP 3: Storing in database...");
-      await storeTrackInDB(fastify.pg, {
-        trackId,
-        songName,
-        artistName,
-        albumName,
-        masterPlaylistUrl,
-        durationSeconds: transcodeResult.audio_duration_seconds ?? null,
-        fileSizeBytes: fileStats.size,
-        totalSegments,
-      }, request.log);
+      await storeTrackInDB(
+        fastify.pg,
+        {
+          trackId,
+          songName,
+          artistName,
+          albumName,
+          masterPlaylistUrl,
+          durationSeconds: transcodeResult.audio_duration_seconds ?? null,
+          fileSizeBytes: fileStats.size,
+          totalSegments,
+        },
+        request.log,
+      );
 
       // STEP 4: Cleanup
       request.log.info("STEP 4: Cleaning up...");
@@ -108,12 +128,15 @@ export async function uploadRoutes(fastify: FastifyInstance) {
 
       // Response
       const totalMs = performance.now() - pipelineStart;
-      request.log.info({
-        trackId,
-        transcodeSeconds: +(transcodeMs / 1000).toFixed(2),
-        s3UploadSeconds: +(s3Ms / 1000).toFixed(2),
-        totalSeconds: +(totalMs / 1000).toFixed(2),
-      }, "UPLOAD COMPLETE");
+      request.log.info(
+        {
+          trackId,
+          transcodeSeconds: +(transcodeMs / 1000).toFixed(2),
+          s3UploadSeconds: +(s3Ms / 1000).toFixed(2),
+          totalSeconds: +(totalMs / 1000).toFixed(2),
+        },
+        "UPLOAD COMPLETE",
+      );
 
       return reply.send({
         success: true,
